@@ -1,10 +1,28 @@
 
 library(tidyverse)
 library(bigrquery)
+library(googleAuthR)
 library(shiny)
 library(shinycssloaders)
 library(shinydashboard)
 
+# google authenticate
+gar_gce_auth()
+
+# utility functions
+withConsoleRedirect <- function(containerId, expr) {
+  # Change type="output" to type="message" to catch stderr
+  # (messages, warnings, and errors) instead of stdout.
+  txt <- capture.output(results <- expr, type = "output")
+  if (length(txt) > 0) {
+    insertUI(paste0("#", containerId), where = "beforeEnd",
+             ui = paste0(txt, "\n", collapse = "")
+    )
+  }
+  results
+}
+
+# builing UI
 ui <- fluidPage(
   # css
   tags$head(tags$style(
@@ -26,11 +44,26 @@ ui <- fluidPage(
   h4("Tony Liu, Jan 2020"),
   
   # Sidebar with options add/remove tabs
-  sidebarLayout(
-    sidebarPanel(
-      id = "sidebar",
+  fluidRow(
+    column(
+      id = "InputPanel",
       width = 5,
-      
+
+      br(), 
+      tabsetPanel(
+        tabPanel("SQL", 
+                 textAreaInput("inputSQL", "SQL to run:", 
+                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.19_06_Leases_with_New_Debt_from_Nick` LIMIT 1000", 
+                               width = "600", height = "400px"),
+                 actionButton("SubmitSQLButton", "Submit SQL code")), 
+        tabPanel("R", 
+                 textAreaInput("inputR", "R to run:", 
+                               "tbl %>% str()", 
+                               width = "600px", height = "400px"),
+                 actionButton("SubmitRButton", "Submit R code")
+                 )
+      ),
+      hr(), 
       div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
           textInput("addTabName", "Tab to add: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
@@ -42,28 +75,40 @@ ui <- fluidPage(
           textInput("removeTabName", "Tab to remove: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
           actionButton("removeTabButton", "Remove tab")),
-      
-      br(), 
-      textAreaInput("inputSQL", "SQL to run:", "", width = "550px", height = "400px"),
-      # verbatimTextOutput("value")
-      actionButton("SubmitSQLButton", "Submit Query")
+      tagAppendAttributes(
+        textOutput("inputTabsString"), 
+        style="white-space:pre-wrap;")
       ),
     
-    mainPanel(
+    column(7, 
+           tabsetPanel(
+             tabPanel("R console", 
+                      hr(),
+                      verbatimTextOutput("RConsoleOutput")
+                      ),
+             tabPanel("R plot", 
+                      hr(),
+                      plotOutput("RPlotOutput", height = "550px"))
+           )),
+    
+    column(
       id = "mainPanel", 
-      width = 5, 
-      textOutput("inputTabsString"),
-      tabsetPanel(id = "tabs",
+      width = 12, 
+      tabsetPanel(id = "activeTab",
                   tabPanel("Home", 
-                           "This is the home tab")
+                           br(), 
+                           tagAppendAttributes(textOutput("Home_sql"), style="white-space:pre-wrap;"), 
+                           hr(), 
+                           DT::dataTableOutput("Home_tbl"))
       )
     )
   )
 )
 
+# building server
 server <- function(input, output, session) {
   
-  reactiveValueList <- reactiveValues(tabList = "")
+  reactiveValueList <- reactiveValues(tabList = "Home")
   
   observeEvent(input$addTabButton, {
     
@@ -73,19 +118,65 @@ server <- function(input, output, session) {
       showNotification("Tab already added, tab name must be unique.")
     } else {
       reactiveValueList$tabList <- c(reactiveValueList$tabList, input$addTabName)
-      insertTab(inputId = "tabs",
-                tabPanel(input$addTabName), 
+      insertTab(inputId = "activeTab",
+                tabPanel(input$addTabName, 
+                         br(), 
+                         tagAppendAttributes(textOutput(paste0(input$addTabName, "_sql")), 
+                                             style="white-space:pre-wrap;"), 
+                         hr(), 
+                         DT::dataTableOutput(paste0(input$addTabName, "_tbl"))), 
                 target = "Home", position = "before")
-    }
-  })
+      }
+    })
+  
   observeEvent(input$removeTabButton, {
     reactiveValueList$tabList <- reactiveValueList$tabList[
       reactiveValueList$tabList != input$removeTabName]
     removeTab(inputId = "tabs", target = input$removeTabName)
-  })
+    reactiveValueList[[paste0(input$activeTab, "_sql")]] <- NULL
+    reactiveValueList[[paste0(input$activeTab, "_tbl")]] <- NULL
+    })
   
   output$inputTabsString <- renderText({
-    reactiveValueList$tabList
+    paste0("All tabs: ", paste(reactiveValueList$tabList, collapse=" "), ";\n", 
+           "Active tab: ", input$activeTab, ";\n"
+           )
+    })
+  
+  observeEvent(input$SubmitSQLButton, {
+    reactiveValueList[[paste0(input$activeTab, "_sql")]] <- input$inputSQL 
+    reactiveValueList[[paste0(input$activeTab, "_tbl")]] <- 
+      bq_project_query("scg-dai-sci-dev", input$inputSQL) %>% 
+      bq_table_download()
+    
+    output[[paste0(input$activeTab, "_sql")]] <- renderText({
+      reactiveValueList[[paste0(input$activeTab, "_sql")]]
+    })
+    output[[paste0(input$activeTab, "_tbl")]] <- DT::renderDataTable({
+      reactiveValueList[[paste0(input$activeTab, "_tbl")]]
+      })
+    })
+
+  output$Home_sql <- renderText({
+    reactiveValueList$Home_sql
+  })
+
+  output$Home_tbl <- DT::renderDataTable({
+    reactiveValueList$Home_tbl
+  })
+  
+  RCodeListener <- eventReactive(input$SubmitRButton, {input$inputR})
+  
+  output$RPlotOutput <- renderPlot({
+    RCodeListener() %>% 
+      paste0("reactiveValueList$", input$activeTab, "_", .) %>% 
+      parse(text=.) %>% eval()
+  })
+
+  output$RConsoleOutput <- renderPrint({
+    RCodeListener() %>%
+      paste0("reactiveValueList$", input$activeTab, "_", .) %>%
+      parse(text=.) %>% eval()
   })
 }
 
