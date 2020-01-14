@@ -1,4 +1,5 @@
 
+# ------------loading packages------------
 library(tidyverse)
 library(bigrquery)
 library(googleAuthR)
@@ -6,10 +7,10 @@ library(shiny)
 library(shinycssloaders)
 library(shinydashboard)
 
-# google authenticate
+# ------------google authenticate------------
 gar_gce_auth()
 
-# utility functions
+# ------------utility functions------------
 withConsoleRedirect <- function(containerId, expr) {
   # Change type="output" to type="message" to catch stderr
   # (messages, warnings, and errors) instead of stdout.
@@ -22,7 +23,7 @@ withConsoleRedirect <- function(containerId, expr) {
   results
 }
 
-# builing UI
+# ------------builing UI------------
 ui <- fluidPage(
   # css
   tags$head(tags$style(
@@ -110,7 +111,7 @@ ui <- fluidPage(
   )
 )
 
-# building server
+# ------------building server------------
 server <- function(input, output, session) {
   
   reactiveValueList <- reactiveValues(tabList = "Home")
