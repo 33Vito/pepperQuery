@@ -53,12 +53,12 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("SQL", 
                  textAreaInput("inputSQL", "SQL to run:", 
-                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.19_06_Leases_with_New_Debt_from_Nick` LIMIT 1000", 
+                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.seasonal_adjusted_turnover_centre` LIMIT 1000", 
                                width = "600", height = "400px"),
                  actionButton("SubmitSQLButton", "Submit SQL code")), 
         tabPanel("R", 
                  textAreaInput("inputR", "R to run:", 
-                               "tbl %>% str()", 
+                               "tbl %>% count()", 
                                width = "600px", height = "400px"),
                  actionButton("SubmitRButton", "Submit R code")
                  )
@@ -74,10 +74,11 @@ ui <- fluidPage(
       div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
           textInput("removeTabName", "Tab to remove: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
-          actionButton("removeTabButton", "Remove tab")),
-      tagAppendAttributes(
-        textOutput("inputTabsString"), 
-        style="white-space:pre-wrap;")
+          actionButton("removeTabButton", "Remove tab"))
+      
+      # tagAppendAttributes(
+      #   textOutput("inputTabsString"), 
+      #   style="white-space:pre-wrap;")
       ),
     
     column(7, 
@@ -86,6 +87,10 @@ ui <- fluidPage(
                       hr(),
                       verbatimTextOutput("RConsoleOutput")
                       ),
+             tabPanel("R table", 
+                      hr(),
+                      DT::dataTableOutput("RTableOutput")
+             ),
              tabPanel("R plot", 
                       hr(),
                       plotOutput("RPlotOutput", height = "550px"))
@@ -115,7 +120,9 @@ server <- function(input, output, session) {
     if (input$addTabName == "") {
       showNotification("Tab name cannot be empty")
     } else if (input$addTabName %in% reactiveValueList$tabList) {
-      showNotification("Tab already added, tab name must be unique.")
+      showNotification("Tab name already added, tab name must be unique.")
+    } else if (str_detect(input$addTabName, "^[0-9]")) {
+      showNotification("Tab name must start with letter.")
     } else {
       reactiveValueList$tabList <- c(reactiveValueList$tabList, input$addTabName)
       insertTab(inputId = "activeTab",
@@ -153,17 +160,23 @@ server <- function(input, output, session) {
       reactiveValueList[[paste0(input$activeTab, "_sql")]]
     })
     output[[paste0(input$activeTab, "_tbl")]] <- DT::renderDataTable({
-      reactiveValueList[[paste0(input$activeTab, "_tbl")]]
+      reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>% 
+        DT::datatable(extensions = 'Buttons', 
+                      options = list(dom = 'Bfrtip',
+                                     buttons = c('copy', 'csv', 'pdf')))
       })
     })
 
-  output$Home_sql <- renderText({
-    reactiveValueList$Home_sql
-  })
+  # output$Home_sql <- renderText({
+  #   reactiveValueList$Home_sql
+  # })
 
-  output$Home_tbl <- DT::renderDataTable({
-    reactiveValueList$Home_tbl
-  })
+  # output$Home_tbl <- DT::renderDataTable({
+  #   reactiveValueList$Home_tbl %>%
+  #     DT::datatable(extensions = 'Buttons', 
+  #                   options = list(dom = 'Bfrtip',
+  #                                  buttons = c('copy', 'csv', 'pdf')))
+  # })
   
   RCodeListener <- eventReactive(input$SubmitRButton, {input$inputR})
   
@@ -177,6 +190,15 @@ server <- function(input, output, session) {
     RCodeListener() %>%
       paste0("reactiveValueList$", input$activeTab, "_", .) %>%
       parse(text=.) %>% eval()
+  })
+  
+  output$RTableOutput <- DT::renderDataTable({
+    RCodeListener() %>%
+      paste0("reactiveValueList$", input$activeTab, "_", .) %>%
+      parse(text=.) %>% eval() %>% 
+      DT::datatable(extensions = 'Buttons', 
+                    options = list(dom = 'Bfrtip',
+                                   buttons = c('copy', 'csv', 'pdf')))
   })
 }
 
