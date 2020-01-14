@@ -54,7 +54,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("SQL", 
                  textAreaInput("inputSQL", "SQL to run:", 
-                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.seasonal_adjusted_turnover_centre` LIMIT 1000", 
+                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.Majors_Hierarchy_18_11` LIMIT 1000", 
                                width = "600", height = "400px"),
                  actionButton("SubmitSQLButton", "Submit SQL code")), 
         tabPanel("R", 
@@ -140,7 +140,7 @@ server <- function(input, output, session) {
   observeEvent(input$removeTabButton, {
     reactiveValueList$tabList <- reactiveValueList$tabList[
       reactiveValueList$tabList != input$removeTabName]
-    removeTab(inputId = "tabs", target = input$removeTabName)
+    removeTab(inputId = "activeTab", target = input$removeTabName)
     reactiveValueList[[paste0(input$activeTab, "_sql")]] <- NULL
     reactiveValueList[[paste0(input$activeTab, "_tbl")]] <- NULL
     })
@@ -155,7 +155,7 @@ server <- function(input, output, session) {
     reactiveValueList[[paste0(input$activeTab, "_sql")]] <- input$inputSQL 
     reactiveValueList[[paste0(input$activeTab, "_tbl")]] <- 
       bq_project_query("scg-dai-sci-dev", input$inputSQL) %>% 
-      bq_table_download()
+      bq_table_download(page_size = 1000)
     
     output[[paste0(input$activeTab, "_sql")]] <- renderText({
       reactiveValueList[[paste0(input$activeTab, "_sql")]]
@@ -163,8 +163,10 @@ server <- function(input, output, session) {
     output[[paste0(input$activeTab, "_tbl")]] <- DT::renderDataTable({
       reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>% 
         DT::datatable(extensions = 'Buttons', 
-                      options = list(dom = 'Bfrtip',
-                                     buttons = c('copy', 'csv', 'pdf')))
+                      options = list(dom = 'Blfrtip',
+                                     buttons = c('copy', 'csv', 'pdf'),
+                                     pageLength = 10,
+                                     lengthMenu = c(10, 50, 100, 200)))
       })
     })
 
@@ -198,8 +200,10 @@ server <- function(input, output, session) {
       paste0("reactiveValueList$", input$activeTab, "_", .) %>%
       parse(text=.) %>% eval() %>% 
       DT::datatable(extensions = 'Buttons', 
-                    options = list(dom = 'Bfrtip',
-                                   buttons = c('copy', 'csv', 'pdf')))
+                    options = list(dom = 'Blfrtip',
+                                   buttons = c('copy', 'csv', 'pdf'), 
+                                   pageLength = 10,
+                                   lengthMenu = c(10, 50, 100, 200)))
   })
 }
 
