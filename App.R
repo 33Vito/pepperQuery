@@ -152,23 +152,40 @@ server <- function(input, output, session) {
     })
   
   observeEvent(input$SubmitSQLButton, {
-    reactiveValueList[[paste0(input$activeTab, "_sql")]] <- input$inputSQL 
-    reactiveValueList[[paste0(input$activeTab, "_tbl")]] <- 
-      bq_project_query("scg-dai-sci-dev", input$inputSQL) %>% 
-      bq_table_download(page_size = 1000)
+    reactiveValueList[[paste0(input$activeTab, "_sql")]] <-
+      input$inputSQL
     
-    output[[paste0(input$activeTab, "_sql")]] <- renderText({
-      reactiveValueList[[paste0(input$activeTab, "_sql")]]
-    })
-    output[[paste0(input$activeTab, "_tbl")]] <- DT::renderDataTable({
-      reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>% 
-        DT::datatable(extensions = 'Buttons', 
-                      options = list(dom = 'Blfrtip',
-                                     buttons = c('copy', 'csv', 'pdf'),
-                                     pageLength = 10,
-                                     lengthMenu = c(10, 50, 100, 200)))
+    sql_sent <-
+      tryCatch(
+        bq_project_query("scg-dai-sci-dev", input$inputSQL), 
+        error = function(e) e
+      )
+    
+    if ("error" %in% class(sql_sent)) {
+      showNotification(sql_sent$message)
+    } else {
+      reactiveValueList[[paste0(input$activeTab, "_tbl")]] <-
+        bq_table_download(sql_sent, page_size = 1000)
+      
+      output[[paste0(input$activeTab, "_sql")]] <- renderText({
+        reactiveValueList[[paste0(input$activeTab, "_sql")]]
       })
-    })
+      
+      output[[paste0(input$activeTab, "_tbl")]] <-
+        DT::renderDataTable({
+          reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>%
+            DT::datatable(
+              extensions = 'Buttons',
+              options = list(
+                dom = 'Blfrtip',
+                buttons = c('copy', 'csv', 'pdf'),
+                pageLength = 10,
+                lengthMenu = c(10, 50, 100, 200)
+              )
+            )
+        })
+    }
+  })
 
   # output$Home_sql <- renderText({
   #   reactiveValueList$Home_sql
