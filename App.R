@@ -91,10 +91,15 @@ ui <- fluidPage(
              tabPanel("R table", 
                       hr(),
                       DT::dataTableOutput("RTableOutput")
-             ),
+                      ),
              tabPanel("R plot", 
                       hr(),
-                      plotOutput("RPlotOutput", height = "550px"))
+                      plotOutput("RPlotOutput", height = "550px")
+                      ), 
+             tabPanel("R billing", 
+                      hr(),
+                      verbatimTextOutput("RBillingOutput")
+             )
            )),
     
     column(
@@ -155,11 +160,11 @@ server <- function(input, output, session) {
     reactiveValueList[[paste0(input$activeTab, "_sql")]] <-
       input$inputSQL
     
-    sql_sent <-
-      tryCatch(
+    withCallingHandlers(
+    sql_sent <- tryCatch(
         bq_project_query("scg-dai-sci-dev", input$inputSQL), 
-        error = function(e) e
-      )
+        error = function(e) e)
+    , message = function(m) output$RBillingOutput <- renderPrint(m$message))
     
     if ("error" %in% class(sql_sent)) {
       showNotification(sql_sent$message)
