@@ -108,9 +108,9 @@ ui <- fluidPage(
       tabsetPanel(id = "activeTab",
                   tabPanel("Home", 
                            br(), 
-                           tagAppendAttributes(textOutput("Home_sql"), style="white-space:pre-wrap;"), 
+                           DT::dataTableOutput("Home_tbl"), 
                            hr(), 
-                           DT::dataTableOutput("Home_tbl"))
+                           tagAppendAttributes(textOutput("Home_sql"), style="white-space:pre-wrap;"))
       )
     )
   )
