@@ -180,6 +180,7 @@ server <- function(input, output, session) {
         DT::renderDataTable({
           reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>%
             DT::datatable(
+              filter = "top", 
               extensions = 'Buttons',
               options = list(
                 dom = 'Blfrtip',
@@ -188,7 +189,7 @@ server <- function(input, output, session) {
                 lengthMenu = c(10, 50, 100, 200)
               )
             )
-        })
+        }, server = FALSE)
     }
   })
 
@@ -222,11 +223,12 @@ server <- function(input, output, session) {
       paste0("reactiveValueList$", input$activeTab, "_", .) %>%
       parse(text=.) %>% eval() %>% 
       DT::datatable(extensions = 'Buttons', 
+                    filter = "top", 
                     options = list(dom = 'Blfrtip',
                                    buttons = c('copy', 'csv', 'pdf'), 
                                    pageLength = 10,
                                    lengthMenu = c(10, 50, 100, 200)))
-  })
+  }, server = FALSE)
 }
 
 shinyApp(ui, server)
