@@ -54,7 +54,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("SQL", 
                  textAreaInput("inputSQL", "SQL to run:", 
-                               "SELECT * FROM `scg-dai-sci-dev.tl_playground.Majors_Hierarchy_18_11` LIMIT 1000", 
+                               "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
                                width = "600", height = "400px"),
                  actionButton("SubmitSQLButton", "Submit SQL code")), 
         tabPanel("R", 
