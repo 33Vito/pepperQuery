@@ -75,7 +75,13 @@ ui <- fluidPage(
       div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
           textInput("removeTabName", "Tab to remove: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
-          actionButton("removeTabButton", "Remove tab"))
+          actionButton("removeTabButton", "Remove tab")),
+      
+      br(), 
+      div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
+          selectizeInput("downloadDataFormat", "Format", c("csv", "xlsx"), width = "80px")),
+      div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
+          downloadButton("downloadData", "Download data from active tab")), 
       
       # tagAppendAttributes(
       #   textOutput("inputTabsString"), 
@@ -189,7 +195,7 @@ server <- function(input, output, session) {
                 lengthMenu = c(10, 50, 100, 200)
               )
             )
-        }, server = FALSE)
+        }, server = T)
     }
   })
 
@@ -229,6 +235,21 @@ server <- function(input, output, session) {
                                    pageLength = 10,
                                    lengthMenu = c(10, 50, 100, 200)))
   }, server = FALSE)
+  
+  # Downloadable csv of selected dataset ----
+  output$downloadData <- downloadHandler(
+    filename <- function() {
+      paste0(input$activeTab, ".", input$downloadDataFormat)
+    },
+    content <- function(file) {
+      switch(input$downloadDataFormat,
+      "csv" = write.csv(reactiveValueList[[paste0(input$activeTab, "_tbl")]], 
+                        file, row.names = FALSE,  na = ""), 
+      "xlsx" = openxlsx::write.xlsx(reactiveValueList[[paste0(input$activeTab, "_tbl")]], 
+                                    file)
+      )
+    }
+  )
 }
 
 shinyApp(ui, server)
