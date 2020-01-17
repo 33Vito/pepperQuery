@@ -135,6 +135,8 @@ server <- function(input, output, session) {
       showNotification("Tab name already added, tab name must be unique.")
     } else if (str_detect(input$addTabName, "^[0-9]")) {
       showNotification("Tab name must start with letter.")
+    } else if (str_detect(input$addTabName, " ")) {
+      showNotification("Tab name cannot contain space.")
     } else {
       reactiveValueList$tabList <- c(reactiveValueList$tabList, input$addTabName)
       insertTab(inputId = "activeTab",
@@ -254,7 +256,22 @@ server <- function(input, output, session) {
 
 shinyApp(ui, server)
 
+## Demo code
 
+# tbl %>% str()
+# 
+# tbl %>% 
+#   count(primary_type, arrest) %>% 
+#   spread(arrest, n, sep="_")
+# 
+# tbl %>% 
+#   count(primary_type, arrest) %>% 
+#   ggplot(aes(x=reorder(primary_type,n,sum), y=n, fill=arrest)) + 
+#   geom_col() + 
+#   coord_flip() + 
+#   xlab("Crime type") + 
+#   ylab("Count") + 
+#   theme_gray(base_size = 15)
 
 
 
