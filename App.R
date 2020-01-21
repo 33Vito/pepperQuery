@@ -11,6 +11,8 @@ library(shinydashboard)
 gar_gce_auth()
 
 # ------------utility functions------------
+source("shiny_modified_inputs.R")
+
 withConsoleRedirect <- function(containerId, expr) {
   # Change type="output" to type="message" to catch stderr
   # (messages, warnings, and errors) instead of stdout.
@@ -53,27 +55,30 @@ ui <- fluidPage(
       br(), 
       tabsetPanel(
         tabPanel("SQL", 
-                 textAreaInput("inputSQL", "SQL to run:", 
-                               "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
-                               width = "600", height = "400px"),
+                 textAreaInputAlt("inputSQL", "SQL to run:", 
+                                  "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
+                                  width = "600", height = "300px", 
+                                  resize = "none", is_code = TRUE),
+                 br(), 
                  actionButton("SubmitSQLButton", "Submit SQL code")), 
         tabPanel("R", 
-                 textAreaInput("inputR", "R to run:", 
-                               "tbl %>% count()", 
-                               width = "600px", height = "400px"),
+                 textAreaInputAlt("inputR", "R to run:", "tbl %>% count()", 
+                                  width = "600px", height = "300px", 
+                                  resize = "none", is_code = TRUE),
+                 br(), 
                  actionButton("SubmitRButton", "Submit R code")
                  )
       ),
       hr(), 
       div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
-          textInput("addTabName", "Tab to add: ", "", width = "180px")), 
+          textInputCode("addTabName", "Tab to add: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
           actionButton("addTabButton", "Add tab")),
       # br(),
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
           br()),
       div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
-          textInput("removeTabName", "Tab to remove: ", "", width = "180px")), 
+          textInputCode("removeTabName", "Tab to remove: ", "", width = "180px")), 
       div(style="display: inline-block;vertical-align:top; padding-top: 25px;",
           actionButton("removeTabButton", "Remove tab")),
       
