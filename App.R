@@ -6,6 +6,7 @@ library(googleAuthR)
 library(shiny)
 library(shinycssloaders)
 library(shinydashboard)
+library(shinyAce)
 
 # ------------google authenticate------------
 gar_gce_auth()
@@ -55,17 +56,37 @@ ui <- fluidPage(
       br(), 
       tabsetPanel(
         tabPanel("SQL", 
-                 textAreaInputAlt("inputSQL", "SQL to run:", 
-                                  "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
-                                  width = "600", height = "300px", 
-                                  resize = "none", is_code = TRUE),
-                 br(), 
-                 actionButton("SubmitSQLButton", "Submit SQL code")), 
+                 # textAreaInputAlt("inputSQL", "SQL to run:", 
+                 #                  "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
+                 #                  width = "600", height = "300px", 
+                 #                  resize = "none", is_code = TRUE),
+                 aceEditor(
+                   outputId = "inputSQL",
+                   selectionId = "selection", # inputSQL_selection
+                   value = "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000",
+                   placeholder = "Input SQL code", 
+                   autoComplete = "live", 
+                   height = "330px", 
+                   fontSize = 13
+                 ), 
+                 # br(), 
+                 actionButton("SubmitSQLButton", "Submit SQL code"),
+                 div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
+                     actionButton("SubmitSQLButton_selection", "Submit selected SQL code"))), 
         tabPanel("R", 
-                 textAreaInputAlt("inputR", "R to run:", "tbl %>% count()", 
-                                  width = "600px", height = "300px", 
-                                  resize = "none", is_code = TRUE),
-                 br(), 
+                 # textAreaInputAlt("inputR", "R to run:", "tbl %>% str()", 
+                 #                  width = "600px", height = "300px", 
+                 #                  resize = "none", is_code = TRUE),
+                 aceEditor(
+                   outputId = "inputR",
+                   selectionId = "selection", # inputR_selection
+                   value = "tbl %>% str()",
+                   placeholder = "Input R code", 
+                   autoComplete = "live", 
+                   height = "330px", 
+                   fontSize = 13
+                 ),
+                 # br(), 
                  actionButton("SubmitRButton", "Submit R code")
                  )
       ),
@@ -129,7 +150,28 @@ ui <- fluidPage(
 
 # ------------building server------------
 server <- function(input, output, session) {
+  # ---------AceEditor server output-------
+  observe({
+    updateAceEditor(
+      session,
+      "inputSQL",
+      theme = "textmate",
+      mode = "sql",
+      tabSize = 2
+    )
+  })
   
+  observe({
+    updateAceEditor(
+      session,
+      "inputR",
+      theme = "solarized_dark",
+      mode = "r",
+      tabSize = 2
+    )
+  })
+  
+  # ---------Tab server output-------
   reactiveValueList <- reactiveValues(tabList = "Home")
   
   observeEvent(input$addTabButton, {
@@ -169,6 +211,7 @@ server <- function(input, output, session) {
            )
     })
   
+  # ---------SQL server output-------
   observeEvent(input$SubmitSQLButton, {
     reactiveValueList[[paste0(input$activeTab, "_sql")]] <-
       input$inputSQL
@@ -206,17 +249,44 @@ server <- function(input, output, session) {
     }
   })
 
-  # output$Home_sql <- renderText({
-  #   reactiveValueList$Home_sql
-  # })
-
-  # output$Home_tbl <- DT::renderDataTable({
-  #   reactiveValueList$Home_tbl %>%
-  #     DT::datatable(extensions = 'Buttons', 
-  #                   options = list(dom = 'Bfrtip',
-  #                                  buttons = c('copy', 'csv', 'pdf')))
-  # })
+  observeEvent(input$SubmitSQLButton_selection, {
+    reactiveValueList[[paste0(input$activeTab, "_sql")]] <-
+      input$inputSQL_selection
+    
+    withCallingHandlers(
+      sql_sent <- tryCatch(
+        bq_project_query("scg-dai-sci-dev", input$inputSQL_selection), 
+        error = function(e) e)
+      , message = function(m) output$RBillingOutput <- renderPrint(m$message))
+    
+    if ("error" %in% class(sql_sent)) {
+      showNotification(sql_sent$message)
+    } else {
+      reactiveValueList[[paste0(input$activeTab, "_tbl")]] <-
+        bq_table_download(sql_sent, page_size = 1000)
+      
+      output[[paste0(input$activeTab, "_sql")]] <- renderText({
+        reactiveValueList[[paste0(input$activeTab, "_sql")]]
+      })
+      
+      output[[paste0(input$activeTab, "_tbl")]] <-
+        DT::renderDataTable({
+          reactiveValueList[[paste0(input$activeTab, "_tbl")]] %>%
+            DT::datatable(
+              filter = "top", 
+              extensions = 'Buttons',
+              options = list(
+                dom = 'Blfrtip',
+                buttons = c('copy', 'csv', 'pdf'),
+                pageLength = 10,
+                lengthMenu = c(10, 50, 100, 200)
+              )
+            )
+        }, server = T)
+    }
+  })
   
+  # ---------R server output-------
   RCodeListener <- eventReactive(input$SubmitRButton, {input$inputR})
   
   output$RPlotOutput <- renderPlot({
@@ -243,7 +313,7 @@ server <- function(input, output, session) {
                                    lengthMenu = c(10, 50, 100, 200)))
   }, server = FALSE)
   
-  # Downloadable csv of selected dataset ----
+  # -------------Downloadable csv of selected dataset -------
   output$downloadData <- downloadHandler(
     filename <- function() {
       paste0(input$activeTab, ".", input$downloadDataFormat)
@@ -258,6 +328,7 @@ server <- function(input, output, session) {
     }
   )
   
+  # -----------reconnection----------------
   session$allowReconnect("force") # to allow reconnection to restore state
   onStop(fun = function() {
     # str(isolate(session$clientData))
