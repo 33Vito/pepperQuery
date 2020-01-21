@@ -252,6 +252,12 @@ server <- function(input, output, session) {
       )
     }
   )
+  
+  session$allowReconnect("force") # to allow reconnection to restore state
+  onStop(fun = function() {
+    # str(isolate(session$clientData))
+    # reactiveValueList <- reactiveValueList()
+  })
 }
 
 shinyApp(ui, server)
