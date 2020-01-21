@@ -7,6 +7,7 @@ library(shiny)
 library(shinycssloaders)
 library(shinydashboard)
 library(shinyAce)
+library(shinyjqui)
 
 # ------------google authenticate------------
 gar_gce_auth()
@@ -87,7 +88,10 @@ ui <- fluidPage(
                    fontSize = 13
                  ),
                  # br(), 
-                 actionButton("SubmitRButton", "Submit R code")
+                 actionButton("SubmitRButton", "Submit R code"),
+                 checkboxInput("tblShortCut", 
+                               "Use `tbl` shortcut (Otherwise use `reactiveValueList${input$activeTab}_tbl`)", 
+                               TRUE, width = "600px"), 
                  )
       ),
       hr(), 
@@ -117,19 +121,20 @@ ui <- fluidPage(
     column(7, 
            tabsetPanel(
              tabPanel("R console", 
-                      hr(),
                       verbatimTextOutput("RConsoleOutput")
                       ),
              tabPanel("R table", 
-                      hr(),
                       DT::dataTableOutput("RTableOutput")
                       ),
              tabPanel("R plot", 
-                      hr(),
-                      plotOutput("RPlotOutput", height = "550px")
+                      jqui_resizable(plotOutput("RPlotOutput", height = "550px")), 
+                      h5("Graph resizable by dragging the mouse from the bottom right corner.")
+                      # div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
+                      #     numericInput("RPlotWidth", "Width: ", 700)),
+                      # div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
+                      #     numericInput("RPlotHeight", "Height: ", 500))
                       ), 
              tabPanel("R billing", 
-                      hr(),
                       verbatimTextOutput("RBillingOutput")
              )
            )),
@@ -142,7 +147,10 @@ ui <- fluidPage(
                            br(), 
                            DT::dataTableOutput("Home_tbl"), 
                            hr(), 
-                           tagAppendAttributes(textOutput("Home_sql"), style="white-space:pre-wrap;"))
+                           tagAppendAttributes(textOutput("Home_sql"), style="white-space:pre-wrap;"), 
+                           br(), 
+                           br(), 
+                           br())
       )
     )
   )
@@ -189,10 +197,13 @@ server <- function(input, output, session) {
       insertTab(inputId = "activeTab",
                 tabPanel(input$addTabName, 
                          br(), 
+                         DT::dataTableOutput(paste0(input$addTabName, "_tbl")), 
+                         hr(), 
                          tagAppendAttributes(textOutput(paste0(input$addTabName, "_sql")), 
                                              style="white-space:pre-wrap;"), 
-                         hr(), 
-                         DT::dataTableOutput(paste0(input$addTabName, "_tbl"))), 
+                         br(), 
+                         br(), 
+                         br()), 
                 target = "Home", position = "before")
       }
     })
@@ -291,19 +302,25 @@ server <- function(input, output, session) {
   
   output$RPlotOutput <- renderPlot({
     RCodeListener() %>% 
-      paste0("reactiveValueList$", input$activeTab, "_", .) %>% 
+      str_replace_all("tbl", ifelse(input$tblShortCut, 
+                                    paste0("reactiveValueList$", input$activeTab, "_tbl"), 
+                                    "tbl")) %>% 
       parse(text=.) %>% eval()
   })
 
   output$RConsoleOutput <- renderPrint({
     RCodeListener() %>%
-      paste0("reactiveValueList$", input$activeTab, "_", .) %>%
+      str_replace_all("tbl", ifelse(input$tblShortCut, 
+                                    paste0("reactiveValueList$", input$activeTab, "_tbl"), 
+                                    "tbl")) %>% 
       parse(text=.) %>% eval()
   })
   
   output$RTableOutput <- DT::renderDataTable({
-    RCodeListener() %>%
-      paste0("reactiveValueList$", input$activeTab, "_", .) %>%
+    RCodeListener()  %>% 
+      str_replace_all("tbl", ifelse(input$tblShortCut, 
+                                    paste0("reactiveValueList$", input$activeTab, "_tbl"), 
+                                    "tbl")) %>% 
       parse(text=.) %>% eval() %>% 
       DT::datatable(extensions = 'Buttons', 
                     filter = "top", 
