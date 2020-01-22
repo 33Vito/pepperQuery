@@ -61,7 +61,7 @@ ui <- fluidPage(
                  #                  "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000", 
                  #                  width = "600", height = "300px", 
                  #                  resize = "none", is_code = TRUE),
-                 aceEditor(
+                 jqui_resizable(aceEditor(
                    outputId = "inputSQL",
                    selectionId = "selection", # inputSQL_selection
                    value = "SELECT * FROM `bigquery-public-data.chicago_crime.crime` LIMIT 1000",
@@ -69,7 +69,7 @@ ui <- fluidPage(
                    autoComplete = "live", 
                    height = "330px", 
                    fontSize = 13
-                 ), 
+                 )), 
                  # br(), 
                  actionButton("SubmitSQLButton", "Submit SQL code"),
                  div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
@@ -78,7 +78,7 @@ ui <- fluidPage(
                  # textAreaInputAlt("inputR", "R to run:", "tbl %>% str()", 
                  #                  width = "600px", height = "300px", 
                  #                  resize = "none", is_code = TRUE),
-                 aceEditor(
+                 jqui_resizable(aceEditor(
                    outputId = "inputR",
                    selectionId = "selection", # inputR_selection
                    value = "tbl %>% str()",
@@ -86,7 +86,7 @@ ui <- fluidPage(
                    autoComplete = "live", 
                    height = "330px", 
                    fontSize = 13
-                 ),
+                 )),
                  # br(), 
                  actionButton("SubmitRButton", "Submit R code"),
                  checkboxInput("tblShortCut", 
