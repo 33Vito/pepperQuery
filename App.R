@@ -68,8 +68,8 @@ ui <- fluidPage(
                    placeholder = "Input SQL code", 
                    autoComplete = "live", 
                    height = "330px", 
-                   fontSize = 13
-                 )), 
+                   fontSize = 12
+                 ), options = list(maxWidth = 610)), 
                  # br(), 
                  actionButton("SubmitSQLButton", "Submit SQL code"),
                  div(style="display: inline-block;vertical-align:top; padding-top: 0px;",
@@ -85,8 +85,8 @@ ui <- fluidPage(
                    placeholder = "Input R code", 
                    autoComplete = "live", 
                    height = "330px", 
-                   fontSize = 13
-                 )),
+                   fontSize = 12
+                 ), options = list(maxWidth = 610)),
                  # br(), 
                  actionButton("SubmitRButton", "Submit R code"),
                  checkboxInput("tblShortCut", 
