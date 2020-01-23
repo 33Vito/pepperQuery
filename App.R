@@ -301,27 +301,27 @@ server <- function(input, output, session) {
   RCodeListener <- eventReactive(input$SubmitRButton, {input$inputR})
   
   output$RPlotOutput <- renderPlot({
-    RCodeListener() %>% 
+    eval_string <- RCodeListener() %>% 
       str_replace_all("tbl", ifelse(input$tblShortCut, 
                                     paste0("reactiveValueList$", input$activeTab, "_tbl"), 
-                                    "tbl")) %>% 
-      parse(text=.) %>% eval()
+                                    "tbl"))
+      eval(parse(text=eval_string))
   })
 
   output$RConsoleOutput <- renderPrint({
-    RCodeListener() %>%
+    eval_string <- RCodeListener() %>%
       str_replace_all("tbl", ifelse(input$tblShortCut, 
                                     paste0("reactiveValueList$", input$activeTab, "_tbl"), 
-                                    "tbl")) %>% 
-      parse(text=.) %>% eval()
+                                    "tbl"))
+    eval(parse(text=eval_string))
   })
   
   output$RTableOutput <- DT::renderDataTable({
-    RCodeListener()  %>% 
+    eval_string <- RCodeListener()  %>% 
       str_replace_all("tbl", ifelse(input$tblShortCut, 
                                     paste0("reactiveValueList$", input$activeTab, "_tbl"), 
-                                    "tbl")) %>% 
-      parse(text=.) %>% eval() %>% 
+                                    "tbl"))
+    eval(parse(text=eval_string)) %>% 
       DT::datatable(extensions = 'Buttons', 
                     filter = "top", 
                     options = list(dom = 'Blfrtip',
