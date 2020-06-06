@@ -26,6 +26,20 @@ withConsoleRedirect <- function(containerId, expr) {
   }
   results
 }
+options(scipen=999, expressions=50000, width = 80,
+        DT.options = list(pageLength = 15,
+                          scrollX = TRUE,
+                          dom = 'Bfrtip',
+                          # buttons = c('copy', 'csv', 'pdf'),
+                          autoWidth = F,
+                          buttons = list('pageLength', 'colvis', 'csv', 'copy',
+                           list(extend = 'pdf',
+                                pageSize = 'A4',
+                                orientation = 'landscape',
+                                filename = 'output')
+                           )))
+
+
 
 # ------------builing UI------------
 ui <- fluidPage(
